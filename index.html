@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reconciliation & Dispute Copilot</title>
+<meta name="description" content="Deterministic reconciliation engine + chargeback copilot for payment gateways/PSPs. Runs fully in your browser.">
+<style>
+  :root{--bg:#0f1420;--panel:#161d2e;--card:#1b2436;--ink:#e8edf6;--mut:#9aa7bd;--line:#273249;
+        --brand:#5b8cff;--good:#2ecc8f;--warn:#e0a63a;--bad:#e5604d;--chip:#223049;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:1120px;margin:0 auto;padding:22px}
+  header h1{font-size:22px;margin:0 0 2px}
+  header .sub{color:var(--mut);font-size:13px}
+  .pill{display:inline-block;font-size:11.5px;color:var(--mut);background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:3px 10px;margin:8px 4px 0 0}
+  .tabs{display:flex;gap:6px;margin:18px 0 10px;flex-wrap:wrap}
+  .tab{padding:9px 14px;border:1px solid var(--line);background:var(--panel);color:var(--mut);border-radius:9px;cursor:pointer;font-size:14px}
+  .tab.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .panel{display:none}.panel.on{display:block}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0}
+  h2{font-size:16px;margin:0 0 10px}h3{font-size:13.5px;margin:14px 0 6px;color:var(--mut)}
+  textarea{width:100%;min-height:120px;background:#0e1626;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px;font:12.5px ui-monospace,Consolas,monospace;resize:vertical}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:760px){.two{grid-template-columns:1fr}}
+  button{font:14px inherit;padding:9px 15px;border-radius:8px;border:1px solid var(--brand);background:var(--brand);color:#fff;cursor:pointer}
+  button.ghost{background:transparent;color:var(--brand)}
+  button.sm{padding:5px 10px;font-size:12.5px}
+  button:disabled{opacity:.5;cursor:default}
+  input[type=file]{font-size:12.5px;color:var(--mut)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin:4px 0 2px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+  .kpi .l{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em}
+  .kpi .v{font-size:22px;font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .t-ok{background:rgba(46,204,143,.15);color:var(--good)}
+  .t-p1{background:rgba(229,96,77,.18);color:var(--bad)}
+  .t-p2{background:rgba(224,166,58,.18);color:var(--warn)}
+  .t-p3{background:rgba(91,140,255,.18);color:var(--brand)}
+  .conf{font-size:11px;color:var(--mut)}
+  .mut{color:var(--mut)}.small{font-size:12px}
+  .insight{border-left:3px solid var(--brand);background:rgba(91,140,255,.08);padding:9px 12px;border-radius:0 8px 8px 0;margin:8px 0;font-size:13px}
+  .status{font-size:12.5px;color:var(--mut);margin:8px 0}
+  .map{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:6px 0}
+  .map label{font-size:11px;color:var(--mut);display:block;margin-bottom:3px}
+  select{background:#0e1626;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:6px 8px;font:13px inherit;width:100%}
+  .field{margin:8px 0}.field label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px}
+  input,select{max-width:100%}
+  .in{background:#0e1626;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:14px inherit;width:100%}
+  .chkrow{display:flex;gap:8px;align-items:flex-start;margin:5px 0;font-size:13px}.chkrow input{width:auto;margin-top:2px}
+  .rec{border-radius:10px;padding:12px 14px;margin:10px 0;font-size:14px}
+  .rec.fight{background:rgba(46,204,143,.12);border:1px solid rgba(46,204,143,.4)}
+  .rec.accept{background:rgba(224,166,58,.12);border:1px solid rgba(224,166,58,.4)}
+  .rec.manual{background:rgba(91,140,255,.12);border:1px solid rgba(91,140,255,.4)}
+  pre.letter{background:#0e1626;border:1px solid var(--line);border-radius:8px;padding:12px;white-space:pre-wrap;font:12.5px ui-monospace,Consolas,monospace;max-height:320px;overflow:auto}
+  .disc{background:rgba(224,166,58,.08);border:1px solid rgba(224,166,58,.3);border-radius:8px;padding:9px 12px;font-size:12px;color:#e9c987;margin:10px 0}
+  .foot{color:var(--mut);font-size:11.5px;margin-top:22px;border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Reconciliation &amp; Dispute Copilot</h1>
+    <div class="sub">Deterministic reconciliation engine + chargeback copilot for payment gateways / PSPs. Runs fully in your browser — data never leaves the page.</div>
+    <div>
+      <span class="pill">Deterministic money-math</span>
+      <span class="pill">Multi-key matching</span>
+      <span class="pill">Handles large files (Web Worker)</span>
+      <span class="pill">Explainable breaks + confidence</span>
+      <span class="pill">Human-in-the-loop</span>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab on" data-t="recon">1 · Reconciliation</div>
+    <div class="tab" data-t="dispute">2 · Chargeback Copilot</div>
+    <div class="tab" data-t="how">How it works</div>
+  </div>
+
+  <!-- ===================== RECON ===================== -->
+  <div class="panel on" id="p-recon">
+    <div class="card">
+      <h2>Match gateway vs settlement</h2>
+      <p class="small mut" style="margin-top:0">Upload (or paste) two files. Columns are auto-detected — you can override them below the result. Matching tries every reference column present in both files (UTR / RRN / order_id / txn_id …), so files that use different id columns still reconcile.</p>
+      <div class="two">
+        <div>
+          <h3>Gateway / PG file</h3>
+          <input type="file" id="pgFile" accept=".csv,.txt,text/csv"><div class="small mut" id="pgInfo"></div>
+          <textarea id="pg" placeholder="…or paste CSV here (header row required)"></textarea>
+        </div>
+        <div>
+          <h3>Bank / Settlement file</h3>
+          <input type="file" id="setFile" accept=".csv,.txt,text/csv"><div class="small mut" id="setInfo"></div>
+          <textarea id="set" placeholder="…or paste CSV here (header row required)"></textarea>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="loadSample()">Load sample</button>
+        <button class="ghost" id="runBtn" onclick="runRecon()">Run reconciliation ▶</button>
+        <button class="ghost sm" onclick="stress(100000)">Stress test · 1 lakh</button>
+        <button class="ghost sm" onclick="stress(500000)">Stress test · 5 lakh</button>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+    <div id="reconOut"></div>
+  </div>
+
+  <!-- ===================== DISPUTE ===================== -->
+  <div class="panel" id="p-dispute">
+    <div class="card">
+      <h2>Classify a chargeback &amp; draft the response</h2>
+      <div class="two">
+        <div>
+          <div class="field"><label>Reason code or description</label><input class="in" id="d-reason" placeholder="e.g. 10.4  /  4853  /  goods not delivered"></div>
+          <div class="field"><label>Scheme</label><select class="in" id="d-scheme"><option>Visa</option><option>Mastercard</option><option>RuPay</option><option>UPI</option><option>Amex</option></select></div>
+          <div class="field"><label>Disputed amount (₹)</label><input class="in" id="d-amount" value="2499"></div>
+          <div class="field"><label>Order / txn id</label><input class="in" id="d-txn" value="o_8GQk7vMl6GovMPx5"></div>
+          <div class="field"><label>Response deadline</label><input class="in" id="d-deadline" type="date"></div>
+        </div>
+        <div>
+          <h3 style="margin-top:0">Evidence you hold</h3>
+          <label class="chkrow"><input type="checkbox" id="e-3ds" checked> 3DS / OTP authenticated (ACS success)</label>
+          <label class="chkrow"><input type="checkbox" id="e-avs"> AVS / CVV match</label>
+          <label class="chkrow"><input type="checkbox" id="e-delivery"> Delivery / service-fulfilment proof</label>
+          <label class="chkrow"><input type="checkbox" id="e-tnc"> T&amp;C / policy acceptance captured</label>
+          <label class="chkrow"><input type="checkbox" id="e-refund"> Refund already processed</label>
+          <label class="chkrow"><input type="checkbox" id="e-history"> Prior successful txns from same customer</label>
+          <label class="chkrow"><input type="checkbox" id="e-single"> Proof of single (non-duplicate) charge</label>
+        </div>
+      </div>
+      <div style="margin-top:6px">
+        <button onclick="analyzeDispute()">Analyze &amp; draft ▶</button>
+        <button class="ghost" onclick="sampleDispute()">Load a sample dispute</button>
+      </div>
+    </div>
+    <div id="dispOut"></div>
+  </div>
+
+  <!-- ===================== HOW ===================== -->
+  <div class="panel" id="p-how">
+    <div class="card">
+      <h2>Design principle: split brain</h2>
+      <p>All <b>money math and transaction matching are deterministic</b> (exact keys, tolerances). Root causes are shown as <b>"Likely … (confirm)" with a confidence score</b> — they are heuristics, not asserted facts. There is <b>no AI in this build</b>; the chargeback copilot uses rule-based classification + templates. Consequential actions stay with a human.</p>
+      <h3>Reconciliation engine</h3>
+      <ul class="small">
+        <li><b>Robust CSV parsing</b> (quoted fields, commas inside values, ₹ and 1,00,000 separators).</li>
+        <li><b>Multi-key matching</b> — tries every reference column common to both files.</li>
+        <li>Classifies: Matched · Timing · Amount mismatch · Fee mismatch · Missing in settlement · Unmatched settlement · Duplicate.</li>
+        <li>Heuristics flagged for confirmation: net-of-fee settlement, ~18% GST on fee, T+n cycle.</li>
+        <li><b>Large files:</b> parsing + matching run in a Web Worker so the UI never freezes; only exceptions are rendered (capped), full breaks are downloadable. Use the stress-test buttons to benchmark on your machine.</li>
+      </ul>
+      <div class="disc">⚠ Honest limits of THIS build: it is a browser prototype — no backend, database, auth, audit log or scheduled ingestion. Reason codes/evidence are illustrative; verify against live Visa/Mastercard/RuPay/NPCI-UPI manuals. Not an official NPCI/network rule. For enterprise use it needs a backend + persistence + access controls (see roadmap).</div>
+    </div>
+  </div>
+
+  <div class="foot">Deterministic engine + rule-based copilot + human-in-the-loop · 100% client-side.</div>
+</div>
+
+<script>
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on'); document.getElementById('p-'+t.dataset.t).classList.add('on');
+});
+
+/* ================= CORE (pure fns — reused in main thread AND worker) ================= */
+function num(v){ if(v==null) return 0; var n=parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; }
+function norm(v){ return String(v==null?'':v).trim().toUpperCase().replace(/\s+/g,''); }
+function pDate(s){ if(!s) return null; s=String(s).trim(); var m;
+  if(m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)) return new Date(+m[1],+m[2]-1,+m[3]);
+  if(m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/)){ var y=+m[3]; if(y<100)y+=2000; return new Date(y,+m[2]-1,+m[1]); }
+  var d=new Date(s); return isNaN(d.getTime())?null:d; }
+function dayDiff(a,b){ var x=pDate(a),y=pDate(b); if(!x||!y) return null; return Math.round((y-x)/86400000); }
+function inr(n){ return '₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:2}); }
+
+/* parse CSV text -> {header:[lower names], records:[{raw:[...]}]}  (one pass, quote-aware) */
+function parseCSV(text){
+  var header=null, records=[], row=[], field='', inQ=false, i=0, n=text.length, started=false;
+  function endField(){ row.push(field); field=''; }
+  function endRow(){ endField(); if(!header){ header=row.map(function(h){return String(h).trim().toLowerCase();}); } else { if(row.length>1||row[0]!=='') records.push(row); } row=[]; }
+  for(i=0;i<n;i++){ var c=text[i];
+    if(inQ){ if(c==='"'){ if(text[i+1]==='"'){ field+='"'; i++; } else inQ=false; } else field+=c; }
+    else{ if(c==='"'){ inQ=true; } else if(c===','){ endField(); } else if(c==='\n'){ endRow(); } else if(c==='\r'){ } else field+=c; started=true; }
+  }
+  if(field.length||row.length){ endRow(); }
+  return {header:header||[], records:records};
+}
+
+var SYN={ key:['utr','rrn','arn','ref','reference','reference_no','txn_id','transaction_id','order_id','merchant_order_id','payment_id','pg_txn_id','bank_ref','id'],
+  amount:['amount','amt','txn_amount','transaction_amount','gross_amount','order_amount','settlement_amount','value'],
+  date:['date','txn_date','transaction_date','settlement_date','value_date','created_at','created','timestamp','time'],
+  status:['status','txn_status','payment_status','state','result'],
+  fee:['fee','fees','charge','charges','mdr','commission','pg_fee','pg_charge','pg_fees'] };
+function detectCols(header){ var map={key:-1,amount:-1,date:-1,status:-1,fee:-1,keyCands:[]};
+  for(var f in SYN){ for(var j=0;j<SYN[f].length;j++){ var idx=header.indexOf(SYN[f][j]); if(idx>=0){ map[f]=idx; break; } } }
+  for(var k=0;k<SYN.key.length;k++){ var ix=header.indexOf(SYN.key[k]); if(ix>=0) map.keyCands.push(ix); }
+  if(map.key<0 && map.keyCands.length) map.key=map.keyCands[0];
+  return map; }
+
+/* build compact records using column indices */
+function toRecs(parsed, cols){ var recs=[], R=parsed.records, L=R.length, cand=cols.keyCands.length?cols.keyCands:[cols.key];
+  for(var i=0;i<L;i++){ var r=R[i]; var keys=[]; for(var c=0;c<cand.length;c++){ var v=norm(r[cand[c]]); if(v) keys.push(v); }
+    recs.push({ key:keys[0]||'', keys:keys, amount:num(r[cols.amount]), date:cols.date>=0?r[cols.date]:'',
+      status:cols.status>=0?String(r[cols.status]||'').toLowerCase():'success', fee:cols.fee>=0?num(r[cols.fee]):null }); }
+  return recs; }
+
+function reconcile(pg, set){
+  var setIdx=new Map(), i, r, k, cand;
+  for(i=0;i<set.length;i++){ r=set[i]; r._used=false; cand=r.keys.length?r.keys:[r.key]; for(var c=0;c<cand.length;c++){ k=cand[c]; if(k&&!setIdx.has(k)) setIdx.set(k,r); } }
+  var pgCount=new Map(); for(i=0;i<pg.length;i++){ k=pg[i].key; pgCount.set(k,(pgCount.get(k)||0)+1); }
+  var counts={Matched:0,Timing:0,'Amount mismatch':0,'Fee mismatch':0,'Missing in settlement':0,'Unmatched settlement':0,Duplicate:0,'OK (failed)':0};
+  var pri={P1:0,P2:0,P3:0}, risk=0, breaks=[], seen=new Set();
+  function add(ref,amt,sAmt,cls,p,conf,why){ breaks.push({ref:ref,amount:amt,sAmt:sAmt,cls:cls,pri:p,conf:conf,why:why}); pri[p]++; }
+  for(i=0;i<pg.length;i++){ r=pg[i];
+    if(pgCount.get(r.key)>1){ if(seen.has(r.key)){ counts.Duplicate++; add(r.key,r.amount,'','Duplicate','P2',90,'Likely duplicate: reference repeats in the gateway file — confirm not a double charge.'); continue; } seen.add(r.key); }
+    var s=null; cand=r.keys.length?r.keys:[r.key]; for(var c=0;c<cand.length;c++){ if(setIdx.has(cand[c])){ s=setIdx.get(cand[c]); break; } }
+    if(!s){ if(/fail|declin|cancel/.test(r.status)){ counts['OK (failed)']++; } else { counts['Missing in settlement']++; risk+=r.amount; add(r.key,r.amount,'','Missing in settlement','P1',100,'Captured at gateway but no settlement record — confirm with bank/PSP (money not yet received?).'); } continue; }
+    s._used=true; var ad=r.amount-s.amount;
+    if(Math.abs(ad)>1){
+      if(Math.abs((r.amount-(r.fee||0))-s.amount)<=1 || (s.fee!=null && Math.abs((r.amount-s.fee)-s.amount)<=1)){ counts['Amount mismatch']++; add(r.key,r.amount,s.amount,'Amount mismatch','P2',80,'Likely: settlement reported NET of fee ('+inr(r.amount)+' − fee ≈ '+inr(s.amount)+'). Confirm gross vs net column.'); }
+      else { counts['Amount mismatch']++; risk+=Math.abs(ad); add(r.key,r.amount,s.amount,'Amount mismatch','P1',100,'Gross amount differs by '+inr(ad)+' — cause unknown, investigate.'); }
+      continue; }
+    if(r.fee!=null && s.fee!=null && Math.abs(s.fee-r.fee)>0.5){
+      if(Math.abs(s.fee-r.fee*1.18)<=Math.max(1,r.fee*0.02)){ counts['Fee mismatch']++; add(r.key,r.amount,s.amount,'Fee mismatch','P3',85,'Likely: ~18% GST on fee ('+inr(r.fee)+'→'+inr(s.fee)+'). Confirm and bake GST into the fee model.'); }
+      else { counts['Fee mismatch']++; add(r.key,r.amount,s.amount,'Fee mismatch','P2',100,'Fee differs ('+inr(r.fee)+'→'+inr(s.fee)+') — check rate card / MDR slab.'); }
+      continue; }
+    var dd=dayDiff(r.date,s.date);
+    if(dd!=null && dd>=1){ counts.Timing++; add(r.key,r.amount,s.amount,'Timing','P3',75,'Settled T+'+dd+' (later cycle) — likely normal if within PSP settlement SLA; confirm SLA.'); }
+    else counts.Matched++;
+  }
+  for(i=0;i<set.length;i++){ if(!set[i]._used){ counts['Unmatched settlement']++; risk+=set[i].amount; add(set[i].key,set[i].amount,set[i].amount,'Unmatched settlement','P1',100,'Settlement with no matching gateway txn — investigate (wrong account / mis-post / missing from export).'); } }
+  return {counts:counts, pri:pri, risk:risk, totalPg:pg.length, totalSet:set.length, matched:counts.Matched, breaks:breaks};
+}
+
+function buildCsv(breaks){ var out='ref,amount,settlement_amount,priority,confidence,classification,root_cause\n';
+  for(var i=0;i<breaks.length;i++){ var b=breaks[i]; out+=[b.ref,b.amount,b.sAmt,b.pri,b.conf+'%',b.cls,'"'+String(b.why).replace(/"/g,'""')+'"'].join(',')+'\n'; }
+  return out; }
+
+function genData(n){ var pg=[], set=[]; var d1='2026-11-10';
+  for(var i=0;i<n;i++){ var key='TXN'+(1000000+i); var amt=Math.round(Math.random()*4900+100); var fee=Math.round(amt*0.02*100)/100;
+    pg.push({key:key,keys:[key],amount:amt,date:d1,status:'success',fee:fee});
+    var roll=Math.random();
+    if(roll<0.88) set.push({key:key,keys:[key],amount:amt,date:d1,fee:fee,_used:false});                 // matched
+    else if(roll<0.93) set.push({key:key,keys:[key],amount:amt,date:d1,fee:Math.round(fee*1.18*100)/100,_used:false}); // GST fee
+    else if(roll<0.96) set.push({key:key,keys:[key],amount:amt-fee,date:d1,fee:fee,_used:false});          // net of fee
+    else if(roll<0.98){ /* missing in settlement */ }
+    else set.push({key:'EXTRA'+i,keys:['EXTRA'+i],amount:amt,date:d1,fee:fee,_used:false});               // unmatched settlement
+  }
+  return {pg:pg,set:set}; }
+
+/* ================= Worker (built from the same fns, with a fallback) ================= */
+var WORKER=null;
+(function(){ try{
+  var src='var SYN='+JSON.stringify(SYN)+';\n'+[num,norm,pDate,dayDiff,inr,parseCSV,detectCols,toRecs,reconcile,buildCsv,genData].map(function(f){return f.toString();}).join('\n')
+    + '\nself.onmessage=function(e){var d=e.data,t0=Date.now();try{var pg,set;'
+    + 'if(d.gen){var g=genData(d.gen);pg=g.pg;set=g.set;}'
+    + 'else{var P=parseCSV(d.pgText),S=parseCSV(d.setText);'
+    + 'var pc=d.pgCols||detectCols(P.header),sc=d.setCols||detectCols(S.header);'
+    + 'if(pc.amount<0||pc.key<0){self.postMessage({ok:false,error:"Could not find a reference or amount column in the GATEWAY file. Headers: "+P.header.join(", ")});return;}'
+    + 'if(sc.amount<0||sc.key<0){self.postMessage({ok:false,error:"Could not find a reference or amount column in the SETTLEMENT file. Headers: "+S.header.join(", ")});return;}'
+    + 'pg=toRecs(P,pc);set=toRecs(S,sc);d._pgHeader=P.header;d._setHeader=S.header;d._pc=pc;d._sc=sc;}'
+    + 'var r=reconcile(pg,set);var csv=buildCsv(r.breaks);'
+    + 'self.postMessage({ok:true,stats:{counts:r.counts,pri:r.pri,risk:r.risk,totalPg:r.totalPg,totalSet:r.totalSet,matched:r.matched,nbreaks:r.breaks.length},sample:r.breaks.slice(0,800),csv:csv,ms:Date.now()-t0,pgHeader:d._pgHeader,setHeader:d._setHeader,pc:d._pc,sc:d._sc});'
+    + '}catch(err){self.postMessage({ok:false,error:(err&&err.message)||String(err)});}};';
+  WORKER=new Worker(URL.createObjectURL(new Blob([src],{type:'application/javascript'})));
+}catch(e){ WORKER=null; } })();
+
+/* ---------- file handling ---------- */
+var pgFileText=null, setFileText=null;
+function hookFile(inputId,infoId,set){ document.getElementById(inputId).addEventListener('change',function(ev){
+  var f=ev.target.files[0]; if(!f){return;} var rd=new FileReader();
+  document.getElementById(infoId).textContent='Reading '+f.name+' ('+(f.size/1048576).toFixed(1)+' MB)…';
+  rd.onload=function(){ var txt=rd.result; if(set){setFileText=txt;}else{pgFileText=txt;}
+    var h=parseCSV(txt.slice(0,5000)).header; document.getElementById(infoId).textContent=f.name+' · columns: '+h.join(', '); };
+  rd.onerror=function(){ document.getElementById(infoId).textContent='Could not read file.'; };
+  rd.readAsText(f); }); }
+hookFile('pgFile','pgInfo',false); hookFile('setFile','setInfo',true);
+
+/* ---------- sample ---------- */
+var SAMPLE_PG='ref,amount,date,status,fee\nRRN1001,1000,2026-11-10,success,20\nRRN1002,2500,2026-11-10,success,50\nRRN1003,500,2026-11-10,success,10\nRRN1004,1800,2026-11-10,failed,0\nRRN1005,3200,2026-11-10,success,64\nRRN1006,750,2026-11-10,success,15\nRRN1007,1200,2026-11-11,success,24\nRRN1008,999,2026-11-10,success,20\nRRN1008,999,2026-11-10,success,20\nRRN1010,1500,2026-11-10,success,30\nRRN1011,600,2026-11-10,success,12\nRRN1012,4000,2026-11-10,success,80\nRRN1013,2200,2026-11-10,success,44';
+var SAMPLE_SET='utr,amount,date,fee\nRRN1001,1000,2026-11-11,23.6\nRRN1002,2500,2026-11-11,59\nRRN1003,500,2026-11-11,11.8\nRRN1005,3136,2026-11-11,64\nRRN1007,1200,2026-11-12,24\nRRN1008,999,2026-11-11,23.6\nRRN1010,1500,2026-11-10,30\nRRN1011,600,2026-11-10,12\nRRN1012,4000,2026-11-10,80\nRRN1013,2200,2026-11-10,44\nRRN9999,400,2026-11-11,8';
+function loadSample(){ document.getElementById('pg').value=SAMPLE_PG; document.getElementById('set').value=SAMPLE_SET; pgFileText=setFileText=null; document.getElementById('pgInfo').textContent=document.getElementById('setInfo').textContent=''; }
+
+/* ---------- run ---------- */
+var LAST_CSV='';
+function setStatus(t){ document.getElementById('status').textContent=t; }
+function busy(b){ document.getElementById('runBtn').disabled=b; }
+function runRecon(extra){
+  var pgText=pgFileText||document.getElementById('pg').value, setText=setFileText||document.getElementById('set').value;
+  if(!extra && (!pgText.trim()||!setText.trim())){ setStatus('Upload or paste both files, or click Load sample.'); return; }
+  busy(true); setStatus('Processing…');
+  var msg=extra||{pgText:pgText,setText:setText};
+  if(WORKER){ WORKER.onmessage=function(e){ busy(false); handleResult(e.data); }; WORKER.postMessage(msg); }
+  else { setTimeout(function(){ try{ var res=runSync(msg); handleResult(res); }catch(err){ handleResult({ok:false,error:err.message}); } busy(false); },30); }
+}
+function runSync(d){ var pg,set,pgH,setH,pc,sc;
+  if(d.gen){ var g=genData(d.gen); pg=g.pg; set=g.set; }
+  else{ var P=parseCSV(d.pgText),S=parseCSV(d.setText); pc=d.pgCols||detectCols(P.header); sc=d.setCols||detectCols(S.header);
+    if(pc.amount<0||pc.key<0) return {ok:false,error:'No reference/amount column in GATEWAY file. Headers: '+P.header.join(', ')};
+    if(sc.amount<0||sc.key<0) return {ok:false,error:'No reference/amount column in SETTLEMENT file. Headers: '+S.header.join(', ')};
+    pg=toRecs(P,pc); set=toRecs(S,sc); pgH=P.header; setH=S.header; }
+  var t0=Date.now(), r=reconcile(pg,set);
+  return {ok:true,stats:{counts:r.counts,pri:r.pri,risk:r.risk,totalPg:r.totalPg,totalSet:r.totalSet,matched:r.matched,nbreaks:r.breaks.length},sample:r.breaks.slice(0,800),csv:buildCsv(r.breaks),ms:Date.now()-t0,pgHeader:pgH,setHeader:setH,pc:pc,sc:sc};
+}
+function stress(n){ busy(true); setStatus('Generating & reconciling '+n.toLocaleString('en-IN')+' rows…'); runRecon({gen:n}); }
+
+function handleResult(d){
+  if(!d.ok){ setStatus(''); document.getElementById('reconOut').innerHTML='<div class="card" style="border-color:var(--bad)"><b style="color:var(--bad)">Could not reconcile.</b><div class="small mut" style="margin-top:6px">'+(d.error||'Unknown error')+'</div></div>'; return; }
+  LAST_CSV=d.csv||''; var s=d.stats;
+  setStatus('Processed '+ s.totalPg.toLocaleString('en-IN') +' gateway + '+ s.totalSet.toLocaleString('en-IN') +' settlement rows in '+ d.ms +' ms.');
+  var kpis='<div class="kpis">'
+    +kpi('Gateway txns',s.totalPg.toLocaleString('en-IN'))
+    +kpi('Matched',s.matched.toLocaleString('en-IN'),'var(--good)')
+    +kpi('Breaks',s.nbreaks.toLocaleString('en-IN'),'var(--warn)')
+    +kpi('P1 / P2 / P3',s.pri.P1+' / '+s.pri.P2+' / '+s.pri.P3)
+    +kpi('₹ at risk',inr(s.risk),'var(--bad)')+'</div>';
+  var ins=''; var c=s.counts;
+  if((c['Fee mismatch']||0)>=2) ins+=insight('🔎 '+c['Fee mismatch']+' fee mismatches — most look like ~18% GST on the fee. Fix once in the fee model (confirm first).');
+  if((c['Missing in settlement']||0)>=1) ins+=insight('🔎 '+c['Missing in settlement']+' successful txn(s) missing from settlement — highest priority; money possibly not received.');
+  if((c['Amount mismatch']||0)>=1) ins+=insight('🔎 '+c['Amount mismatch']+' amount mismatch(es) — check net-of-fee vs gross reporting.');
+  if((c['Unmatched settlement']||0)>=1) ins+=insight('🔎 '+c['Unmatched settlement']+' settlement record(s) with no gateway txn — investigate.');
+  var rows=''; var ord={P1:0,P2:1,P3:2}; var sm=(d.sample||[]).slice().sort(function(a,b){return ord[a.pri]-ord[b.pri];});
+  for(var i=0;i<sm.length;i++){ var b=sm[i]; rows+='<tr><td><b>'+esc(b.ref)+'</b></td><td class="n">'+inr(b.amount)+'</td><td><span class="tag '+({P1:'t-p1',P2:'t-p2',P3:'t-p3'}[b.pri])+'">'+b.pri+'</span></td><td>'+b.cls+' <span class="conf">· '+b.conf+'%</span></td><td class="mut small">'+esc(b.why)+'</td></tr>'; }
+  var capNote = s.nbreaks>sm.length ? '<p class="small mut" style="margin-top:8px">Showing first '+sm.length+' of '+s.nbreaks.toLocaleString('en-IN')+' breaks. <a href="#" onclick="dlCsv();return false" style="color:var(--brand)">Download all breaks (CSV)</a></p>' : (s.nbreaks? '<p class="small mut" style="margin-top:8px"><a href="#" onclick="dlCsv();return false" style="color:var(--brand)">Download breaks (CSV)</a></p>':'');
+  var mapUi = d.pgHeader ? mapBlock(d) : '';
+  document.getElementById('reconOut').innerHTML='<div class="card"><h2>Reconciliation result</h2>'+kpis+ins+
+    '<h3>Exception queue (priority-sorted) · confidence shown per break</h3>'+
+    '<table><tr><th>Ref</th><th class="n">Amount</th><th>Priority</th><th>Classification</th><th>Likely root cause (confirm)</th></tr>'+(rows||'<tr><td colspan=5 class="mut">No breaks — everything matched.</td></tr>')+'</table>'+
+    capNote+mapUi+
+    '<p class="small mut" style="margin-top:10px">Matched rows are hidden. Root causes are heuristics to confirm, not asserted facts. Nothing is auto-closed — an operator reviews each break.</p></div>';
+}
+function kpi(l,v,col){ return '<div class="kpi"><div class="l">'+l+'</div><div class="v"'+(col?' style="color:'+col+'"':'')+'>'+v+'</div></div>'; }
+function insight(t){ return '<div class="insight">'+t+'</div>'; }
+function esc(s){ return String(s).replace(/[&<>]/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[m];}); }
+function dlCsv(){ var blob=new Blob([LAST_CSV],{type:'text/csv'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='recon_breaks.csv'; a.click(); }
+
+/* column override UI */
+function mapBlock(d){ if(!d.pgHeader||!d.setHeader) return '';
+  function sel(side,field,header,cur){ var o=''; for(var i=0;i<header.length;i++) o+='<option value="'+i+'"'+(i===cur?' selected':'')+'>'+esc(header[i])+'</option>'; o+='<option value="-1"'+(cur<0?' selected':'')+'>(none)</option>';
+    return '<div><label>'+side+' · '+field+'</label><select id="m-'+side+'-'+field+'">'+o+'</select></div>'; }
+  var pc=d.pc,sc=d.sc;
+  return '<details style="margin-top:12px"><summary class="small mut" style="cursor:pointer">Columns used (click to override &amp; re-run)</summary><div class="map">'
+    +sel('pg','key',d.pgHeader,pc.key)+sel('pg','amount',d.pgHeader,pc.amount)+sel('pg','date',d.pgHeader,pc.date)+sel('pg','fee',d.pgHeader,pc.fee)+sel('pg','status',d.pgHeader,pc.status)
+    +sel('set','key',d.setHeader,sc.key)+sel('set','amount',d.setHeader,sc.amount)+sel('set','date',d.setHeader,sc.date)+sel('set','fee',d.setHeader,sc.fee)
+    +'</div><button class="ghost sm" onclick="rerun()">Re-run with these columns</button></details>'; }
+function gv(id){ var e=document.getElementById(id); return e?parseInt(e.value,10):-1; }
+function rerun(){ var pgText=pgFileText||document.getElementById('pg').value, setText=setFileText||document.getElementById('set').value;
+  var pgCols={key:gv('m-pg-key'),amount:gv('m-pg-amount'),date:gv('m-pg-date'),fee:gv('m-pg-fee'),status:gv('m-pg-status'),keyCands:[gv('m-pg-key')].filter(function(x){return x>=0;})};
+  var setCols={key:gv('m-set-key'),amount:gv('m-set-amount'),date:gv('m-set-date'),fee:gv('m-set-fee'),status:-1,keyCands:[gv('m-set-key')].filter(function(x){return x>=0;})};
+  runRecon({pgText:pgText,setText:setText,pgCols:pgCols,setCols:setCols}); }
+
+/* ================= DISPUTE (rule-based) ================= */
+var CODES={'10.4':{s:'Visa',t:'Other Fraud – Card-Absent',cat:'fraud'},'13.1':{s:'Visa',t:'Merchandise/Services Not Received',cat:'notreceived'},'13.6':{s:'Visa',t:'Credit Not Processed',cat:'credit'},'12.5':{s:'Visa',t:'Incorrect Amount',cat:'amount'},'12.6':{s:'Visa',t:'Duplicate Processing',cat:'duplicate'},'4837':{s:'Mastercard',t:'No Cardholder Authorization',cat:'fraud'},'4853':{s:'Mastercard',t:'Cardholder Dispute',cat:'notreceived'},'4834':{s:'Mastercard',t:'Point-of-Interaction Error',cat:'amount'},'4863':{s:'Mastercard',t:'Cardholder Does Not Recognize',cat:'fraud'}};
+var CAT={fraud:{name:'Fraud / unauthorized',ev:['3ds','avs','history'],win:'Strong if 3DS/OTP authenticated — liability usually shifts to the issuer.',letter:function(c){return 'This transaction was authenticated via 3-D Secure (OTP) by the cardholder before authorization for order '+c.txn+'. We also hold '+c.evtext+'. As the authenticated card-not-present transaction carries issuer liability, we request the chargeback be reversed.';}},
+ notreceived:{name:'Goods/services not received',ev:['delivery','tnc'],win:'Strong with delivery/fulfilment proof + accepted T&C.',letter:function(c){return 'The goods/services for order '+c.txn+' were delivered/fulfilled to the cardholder. We enclose '+c.evtext+'. As fulfilment is evidenced, we request the dispute be declined.';}},
+ credit:{name:'Credit not processed',ev:['refund'],win:'If a refund is genuinely owed and not done, accept & refund. Fight only if already refunded.',letter:function(c){return 'Our records show the credit for order '+c.txn+(c.hasRefund?' has already been processed (refund reference enclosed)':' is under review')+'. We enclose '+c.evtext+'.';}},
+ amount:{name:'Incorrect amount',ev:['single'],win:'Fight if the charged amount matches the order.',letter:function(c){return 'The amount charged for order '+c.txn+' ('+inr(c.amount)+') matches the authorized order total. We enclose '+c.evtext+'.';}},
+ duplicate:{name:'Duplicate processing',ev:['single'],win:'If truly duplicated, accept & refund one leg; else fight with single-charge proof.',letter:function(c){return 'Order '+c.txn+' was charged once only; no duplicate settlement exists. We enclose '+c.evtext+'.';}}};
+var EVLABEL={'3ds':'3DS/OTP authentication result','avs':'AVS/CVV match','delivery':'delivery/fulfilment proof','tnc':'accepted T&C','refund':'refund reference','history':'prior transaction history','single':'single-charge proof'};
+function dchk(id){return document.getElementById(id).checked;}
+function classifyDispute(){ var raw=document.getElementById('d-reason').value.trim(); var code=raw.replace(/\s/g,'');
+  if(CODES[code]) return Object.assign({code:code},CODES[code]);
+  var t=raw.toLowerCase(),cat='fraud';
+  if(/not received|not delivered|undeliver|service|goods/.test(t))cat='notreceived';
+  else if(/duplicate|twice|double/.test(t))cat='duplicate';
+  else if(/credit|refund not/.test(t))cat='credit';
+  else if(/amount|incorrect|wrong charge|overcharg/.test(t))cat='amount';
+  else if(/fraud|unauth|not recogni/.test(t))cat='fraud';
+  return {s:document.getElementById('d-scheme').value,t:raw||'(free text)',cat:cat,code:code||'—'}; }
+function sampleDispute(){ document.getElementById('d-reason').value='4853'; document.getElementById('d-scheme').value='Mastercard'; document.getElementById('d-amount').value='2499'; document.getElementById('d-txn').value='o_ZVzvwZwxnGzrDq68'; document.getElementById('e-3ds').checked=true; document.getElementById('e-delivery').checked=true; document.getElementById('e-tnc').checked=true; analyzeDispute(); }
+function analyzeDispute(){ var c=classifyDispute(),cat=CAT[c.cat];
+  var ev={'3ds':dchk('e-3ds'),'avs':dchk('e-avs'),'delivery':dchk('e-delivery'),'tnc':dchk('e-tnc'),'refund':dchk('e-refund'),'history':dchk('e-history'),'single':dchk('e-single')};
+  var have=Object.keys(ev).filter(function(k){return ev[k];}); var need=cat.ev; var haveNeeded=need.filter(function(k){return ev[k];}); var gaps=need.filter(function(k){return !ev[k];});
+  var amount=num(document.getElementById('d-amount').value), txn=document.getElementById('d-txn').value||'(order id)', dl=document.getElementById('d-deadline').value;
+  var rec,cls,conf;
+  if(c.cat==='credit'&&!ev.refund){rec='ACCEPT & refund';cls='accept';conf='High';}
+  else if(haveNeeded.length>=Math.ceil(need.length/2)&&haveNeeded.length>0){rec='FIGHT (represent)';cls='fight';conf=gaps.length?'Medium':'High';}
+  else if(have.length===0){rec='MANUAL REVIEW';cls='manual';conf='Low';}
+  else{rec='ACCEPT (weak evidence)';cls='accept';conf='Medium';}
+  var evtext=haveNeeded.map(function(k){return EVLABEL[k];}).join(', ')||'the available transaction records';
+  var letter='REPRESENTMENT – '+c.s+' dispute '+(c.code!=='—'?'('+c.code+')':'')+'\nOrder/Txn: '+txn+'   Amount: '+inr(amount)+(dl?'   Deadline: '+dl:'')+'\nCategory: '+cat.name+'\n\nTo the issuing bank,\n\n'+cat.letter({txn:txn,amount:amount,evtext:evtext,hasRefund:ev.refund})+'\n\nEvidence enclosed: '+(haveNeeded.map(function(k){return '• '+EVLABEL[k];}).join('  ')||'(attach supporting records)')+'\n\nSubmitted for your review.\n[DRAFT — human review & approval required before submission]';
+  var dlNote=''; if(dl){ var left=dayDiff(new Date().toISOString().slice(0,10),dl); dlNote=insight('⏱ Deadline in '+left+' day(s) — '+(left<=2?'<span style="color:var(--bad)">act now</span>':'on track')+'.'); }
+  document.getElementById('dispOut').innerHTML='<div class="card"><h2>Dispute analysis</h2><table>'
+    +'<tr><td class="mut">Reason</td><td><b>'+esc(c.code)+'</b> — '+esc(c.t)+'</td></tr>'
+    +'<tr><td class="mut">Category</td><td>'+cat.name+'</td></tr>'
+    +'<tr><td class="mut">Winning factor</td><td class="small">'+cat.win+'</td></tr></table>'+dlNote
+    +'<div class="rec '+cls+'"><b>Recommendation: '+rec+'</b> · confidence: '+conf+(gaps.length?'<div class="small mut" style="margin-top:6px">Evidence gaps: '+gaps.map(function(k){return EVLABEL[k];}).join(', ')+'</div>':'<div class="small mut" style="margin-top:6px">You hold the key evidence for this category.</div>')+'</div>'
+    +'<h3>Auto-drafted representment <button class="ghost sm" onclick="copyLetter()">Copy</button></h3><pre class="letter" id="letter">'+esc(letter)+'</pre>'
+    +'<p class="small mut">Rule-based recommendation on the evidence you ticked; the draft is grounded in the case facts. A specialist edits and a checker approves before anything is submitted — the tool never submits or denies on its own.</p></div>'; }
+function copyLetter(){ var t=document.getElementById('letter').innerText; if(navigator.clipboard) navigator.clipboard.writeText(t); }
+
+/* init */
+loadSample();
+document.getElementById('d-deadline').value=new Date(Date.now()+4*86400000).toISOString().slice(0,10);
+</script>
+</body>
+</html>
